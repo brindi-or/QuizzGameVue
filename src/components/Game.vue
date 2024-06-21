@@ -18,7 +18,7 @@ export default {
       answerSubmitted:false,
       userScore:0,
       computerScore:0,
-      timeLeft:10,
+      timeLeft:120,
       timer:null,
       isRunning:false,
       isDisabled:false
@@ -80,7 +80,7 @@ export default {
     },
     resetTimer(){
       this.stopTimer();
-      this.timeLeft =10;
+      this.timeLeft =120;
     },
 
     getNewQuestion(){//pour éviter la duplication de code on fait appel à cette fonction lors du montage de l'application et lors de l'appele à une nouvelle question
