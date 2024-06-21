@@ -17,21 +17,33 @@ export default {
       chosenAnswer:null,
       answerSubmitted:false,
       userScore:0,
-      computerScore:0
+      computerScore:0,
+      timeLeft:10,
+      timer:null,
+      isRunning:false,
+      isDisabled:false
     }
   },
 
   computed:{//contient le proprités calculées 
-    answers(){
+    answers(){ //permet de récuperer les réponses et de mélanger les bonnes avec les mauvaises
       let answers =JSON.parse( JSON.stringify(this.incorrectAnswer));
       answers.splice(Math.round(Math.random() * answers.lenght),0,this.correctAnswer);//position , nombre d'element à enlever, l'ement à ajouter
       return answers;
-    }
+    },
+    formattedTime() {//formatage des secondes en minutes secondes
+      const timeLeft = this.timeLeft;
+      return `${Math.floor(timeLeft / 60)} : ${timeLeft % 60 < 10 ? '0' : ''}${timeLeft % 60}`;
+    },
+    
   },
   
   methods: {
     submit_answer(){
-        if(!this.chosenAnswer){
+      this.isDisabled=true;
+      this.stopTimer();
+
+      if(!this.chosenAnswer){
         alert("Please pick one of the options below")
       }else{
         this.answerSubmitted = true;
@@ -41,14 +53,39 @@ export default {
         }else{
           this.computerScore +=1;
         }
-      
+        
       }
       
       
     },
+    startTimer(){
+      if(this.timer){
+        clearInterval(this.timer);
+      }
+      this.isRunning = true;
+      this.timer = setInterval(()=>{
+        if(this.timeLeft){
+          this.timeLeft--;
+        }else{
+          this.isDisabled=true;
+          
+          this.stopTimer();
+          alert('Temps écoulé. Votre score est de ' + `${this.userScore}` + ' vs la machine ' + `${this.computerScore}`)
+        }
+      }, 1000);
+    },
+    stopTimer(){
+      clearInterval(this.timer);
+      this.isRunning = false;
+    },
+    resetTimer(){
+      this.stopTimer();
+      this.timeLeft =10;
+    },
 
     getNewQuestion(){//pour éviter la duplication de code on fait appel à cette fonction lors du montage de l'application et lors de l'appele à une nouvelle question
-
+      this.isDisabled=false;
+      
       this.answerSubmitted = false;
       this.chosenAnswer = null;
       this.question= null;
@@ -57,6 +94,8 @@ export default {
       .get('https://opentdb.com/api.php?amount=1&category=18')
       .then((response) =>{
         this.question = response.data.results[0].question;
+        this.startTimer();
+
         this.incorrectAnswer = response.data.results[0].incorrect_answers;
         this.correctAnswer = response.data.results[0].correct_answer;
         console.log(response.data.results[0]);
@@ -67,64 +106,93 @@ export default {
       this.computerScore = 0
     }
   },
+  mounted(){
+    this.startTimer();
+  },
+  beforeDestroy() {
+    this.stopTimer();
+  },
   created() {//Hook; chargement de l'application et remplie des données
+
   this.getNewQuestion();
+
 }
 }
 </script>
 
 <template>
+
   <div>
+ 
     <Score :userScore="this.userScore" :computerScore="this.computerScore" />
  
-  <template v-if="this.question">
+    <template v-if="this.question">
 
-    <h1 v-html="this.question"></h1>
+      <h1 v-html="this.question"></h1>
 
-    <template v-for="(answer,index) in this.answers" v-bind:key="index">
-    
-      <input type="radio"
+      <template v-for="(answer,index) in this.answers" v-bind:key="index">
       
-      :disabled="this.answerSubmitted"  
-      name="choices" 
-      :value="answer"
-      v-model="this.chosenAnswer" />
+        <input type="radio"
+        
+        :disabled="this.answerSubmitted || this.timeLeft == 0"  
+        name="choices" 
+        :value="answer"
+        v-model="this.chosenAnswer" />
 
-    <label for="choices" v-html="answer"></label><br />
+        <label for="choices"
+          v-html="answer">
+        </label><br />
+      </template>
+
+      <button 
+        v-if="!this.answerSubmitted || this.timeLeft != 0" 
+
+        class="send" 
+        ref="validate"
+        :disabled="isDisabled"
+        type="button" 
+        style="    margin-right: 5%;"
+        @click="this.submit_answer()">Validate</button>
+
+      
+
+      <section class="result" v-if="this.answerSubmitted">
+
+        <h4 v-if="this.chosenAnswer == this.correctAnswer" 
+          v-html="'&#9989; Congratulations the answer '
+          +this.correctAnswer + ' is correct'">
+        </h4>
+        
+        <h4 v-else
+          v-html="'&#10060; I am sorry you pick a wrong answer, the correct answer is '
+          + this.correctAnswer">
+        </h4>
+        
+      
+        <button class="send" 
+        v-if="this.timeLeft != 0"
+          type="button" 
+          @click="this.getNewQuestion()">Next question
+        </button>
+
+      </section>
+      
     </template>
-
-    <button 
-    v-if="!this.answerSubmitted" 
-    class="send" 
-    type="button" 
-    @click="this.submit_answer()">Valider</button>
-
-    <button
-    class="reinitialize" 
-    type="button" 
-    @click="this.reload()">Réinitialiser</button>
-    <section class="result" v-if="this.answerSubmitted">
-
-      <h4 v-if="this.chosenAnswer == this.correctAnswer" 
-      v-html="'&#9989; Congratulations the answer ' +this.correctAnswer + ' is correct'">
-      </h4>
-      
-      <h4 v-else
-      v-html="'&#10060; I am sorry you pick a wrong answer, the correct answer is '  + this.correctAnswer">
-      </h4>
-      
-     
-      <button class="send" type="button" @click="this.getNewQuestion()">Next question
-      </button>
-
+    <section>
+      <div class="timer">
+      <span>Time left : {{ formattedTime }} </span>
+      <button
+        class="reinitialize" 
+        v-if="this.timeLeft == 0"
+        type="button" 
+        @click="this.reload(), this.resetTimer(),this.getNewQuestion()">Reinitialize</button>
+      </div>
     </section>
-
-  </template>
-
   </div> 
 </template>
 
 <style>
+
 h1 {
   font-size: 18px;
 }

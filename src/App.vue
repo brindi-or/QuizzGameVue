@@ -1,12 +1,29 @@
-<script setup>
-import HelloWorld from "./components/HelloWorld.vue";
+<script >
+
 import Game from "./components/Game.vue";
+import Header from "./components/Header.vue";
+
+export default {
+  name:'App',
+  components:{
+    Game,
+    Header
+  },
+
+  data(){
+    return {
+      name:''
+    }
+  },
+  created() {//Hook; chargement de l'application et remplie des données
+  let name = prompt('Quel est votre nom');
+  this.name = name;
+  }
+}
 </script>
 
 <template>
-
-    
-
+<Header :name="this.name"/> 
     <Game />
 </template>
 
